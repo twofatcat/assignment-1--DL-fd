@@ -1,0 +1,162 @@
+# Assignment1
+
+## 1 read file
+
+import sys
+import csv
+import pandas as pd
+import numpy
+import scipy.special
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+%matplotlib inline
+
+input_file = '/Users/cao.yumin/Downloads/diabetes_scale.txt'
+output_file = '/Users/cao.yumin/Downloads/diabetes_scale01.csv'
+
+reader = csv.reader( open( input_file ), delimiter = " " )
+writer = csv.writer( open( output_file, 'w' ))
+attribute = ['label','1','2','3','4','5','6','7','8']
+writer.writerow(attribute)
+for line in reader:
+    label = line.pop( 0 )
+#     if label == '-1':
+#         label = '0'
+    if line[-1].strip() == '':
+        line.pop( -1 )
+#     print(line)
+    d = int(len(line))
+    line = map( lambda x: tuple( x.split( ":" )), line )
+#     print(line)
+# 	# ('1', '0.194035105364'), ('2', '0.186042408882'), ('3', '-0.148706067206'), ...
+    new_line = [ label ] + [ 0 ] * d
+    for i, v in line:
+        i = int( i )
+        if i <= d:
+            new_line[i] = v
+    print(new_line)
+    writer.writerow(new_line)
+
+df = pd.read_csv(output_file)
+df
+
+df.isnull().sum()
+
+df.dropna(inplace=True)
+
+X_train,X_test,y_train,y_test = train_test_split(df.iloc[:,1:], df['label'],test_size=0.2, random_state=0)
+
+def relu(X):
+    return numpy.maximum(0,X)
+
+## 2 build architecture of perceptron
+
+class neuralNetwork:
+    def __init__(self, inputnodes, hiddennodes, outputnodes, learningrate):
+        self.inodes = inputnodes
+        self.hnodes = hiddennodes
+        self.onodes = outputnodes
+        # learning rate
+        self.lr = learningrate
+        # setting weight
+        self.wih = numpy.random.normal(0.0, pow(self.hnodes, -0.5), (self.hnodes, self.inodes))
+        self.who = numpy.random.normal(0.0, pow(self.onodes, -0.5), (self.onodes, self.hnodes))
+#         print(self.wih.shape)
+        # activation function
+#         self.activation_function = lambda x: relu(x)
+        self.activation_function = lambda x: scipy.special.expit(x)
+        return
+    def train(self, inputs_list, targets_list):
+        # convert inputs list to 2d array
+        inputs = numpy.array(inputs_list, ndmin=2).T
+        targets = numpy.array(targets_list,ndmin=2).T
+#         print(inputs)
+#         print(targets)
+         # calculate signals into hidden layer
+        hidden_inputs = numpy.dot(self.wih, inputs)
+        # calculate signals emerging from hidden layer
+        hidden_outputs = self.activation_function(hidden_inputs)
+        # calculate signals into final output layer
+        final_inputs = numpy.dot(self.who, hidden_outputs)
+        # calculate the signals emerging from final output layer
+        final_outputs = self.activation_function(final_inputs)
+        # output layer error is the (target-actual)
+#         print(final_inputs)
+#         print(final_outputs)
+#         print(targets)
+        output_errors = targets - final_outputs
+#         print(output_errors.shape)
+        hidden_errors = numpy.dot(self.who.T, output_errors)
+        self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0- final_outputs)), \
+                                        numpy.transpose(hidden_outputs))
+        # update weights between input and hidden layers
+        self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0- hidden_outputs)), \
+                                        numpy.transpose(inputs))
+#         print(self.who)
+#         print('---')
+#         print(self.wih)
+#         print('>>>')
+        return
+    def query(self, inputs_list):
+        # convert inputs list to 2d array
+        inputs = numpy.array(inputs_list, ndmin=2).T
+        # calculate signals into hidden layer
+        hidden_inputs = numpy.dot(self.wih, inputs)
+        # calculate signals emerging from hidden layer
+        hidden_outputs = self.activation_function(hidden_inputs)
+        # calculate signals into final output layer
+        final_inputs = numpy.dot(self.who, hidden_outputs)
+        # calculate the signals emerging from final output layer
+        final_outputs = self.activation_function(final_inputs)
+        return final_outputs
+
+input_nodes = 8
+hidden_nodes = 6
+output_nodes = 2
+learning_rate = 0.2
+
+n = neuralNetwork(input_nodes,hidden_nodes,output_nodes,learning_rate)
+
+for i in range(len(X_train)):
+    templist = X_train.iloc[i:i+1,:].values.tolist()[0]
+#     print(templist)
+    inputs = [m * 0.99 + 0.01 for m in templist]
+    if y_train.values.tolist()[i]==1:
+        targets = [0.99,0.01]
+    elif y_train.values.tolist()[i]==-1:
+        targets = [0.01,0.99]
+    n.train(inputs,targets)
+
+# epochs = 3
+# for e in range(epochs):
+#     n.train(inputs, targets)
+
+score = []
+y_list = y_test.values.tolist()
+for j in range(len(X_test)):
+    templist = X_test.iloc[j:j+1,:].values.tolist()[0]
+#     print(templist)
+    inputs = [k * 0.99 + 0.01 for k in templist]
+    outputs = n.query(inputs)
+#     final = [outputs.tolist()[0][0]]+[outputs.tolist()[1][0]]
+    label = numpy.argmax(outputs)
+    if label==0:
+        correct_label = 1
+    elif label==1:
+        correct_label = -1
+    if correct_label == y_list[j]:
+        score.append(1)
+    else:
+        score.append(0)
+#     print(outputs)
+#     print(final)
+#     print('--')
+#     print(label)
+#     print('>>>')
+score_array = numpy.asarray(score)
+accuracy = score_array.sum()/score_array.size
+print('Accuracy is:',accuracy)
+
+df['label'].values.tolist().count(-1)
+
+226/672
