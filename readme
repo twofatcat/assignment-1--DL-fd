@@ -1,1 +1,3 @@
 Deep learning of fundamental, yumin cao, a1754926
+
+用mlp进行乳腺癌预测。mlp核心代码不借用第三方库
